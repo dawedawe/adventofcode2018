@@ -24,3 +24,21 @@ module Day01 =
         |> parseInput
         |> List.fold (fun acc e -> acc |> e) 0
 
+    let rec part2 (ops : (int -> int) list) (opIndex : int) (currentFrequency : int) (seenFrequencies : Set<int>) =
+        if (opIndex >= ops.Length)
+        then part2 ops 0 currentFrequency seenFrequencies
+        else
+            let currentFrequency' = currentFrequency |> ops.[opIndex]
+            if (seenFrequencies.Contains currentFrequency')
+            then currentFrequency'
+            else
+                let seenFrequencies' = seenFrequencies.Add currentFrequency'
+                part2 ops (opIndex + 1) currentFrequency' seenFrequencies'
+
+
+    let day01Part2 () =
+        let ops = getInput() |> parseInput
+        let frequencies = Set.empty<int>
+        let firstRepeat = part2 ops 0 0 frequencies
+        firstRepeat
+
