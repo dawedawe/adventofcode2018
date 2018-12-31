@@ -1,5 +1,4 @@
 namespace Adventofcode2018
-open System
 
 module Day03 =
 
