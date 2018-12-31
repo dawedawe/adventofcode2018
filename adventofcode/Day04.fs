@@ -60,5 +60,12 @@ module Day04 =
         let lines = getInput InputFile |> List.sortBy parseTimestamp 
         let guardsDic = processLines lines (Dictionary<int, Guard>()) 0
         let biggestSleeper = guardsDic.Values.OrderByDescending(fun g -> g.Slept.Values.Sum()).First()
-        let m = biggestSleeper.Slept.OrderByDescending(fun p -> p.Value).First().Key
-        biggestSleeper.Id * m
+        let minute = biggestSleeper.Slept.OrderByDescending(fun p -> p.Value).First().Key
+        biggestSleeper.Id * minute
+
+    let day04Part2 () =
+        let lines = getInput InputFile |> List.sortBy parseTimestamp 
+        let guardsDic = processLines lines (Dictionary<int, Guard>()) 0
+        let biggestSleeper = guardsDic.Values.OrderByDescending(fun g -> g.Slept.Values.Max()).First()
+        let minute = biggestSleeper.Slept.OrderByDescending(fun p -> p.Value).First().Key
+        biggestSleeper.Id * minute
