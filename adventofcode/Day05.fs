@@ -1,6 +1,7 @@
 namespace Adventofcode2018
 
 open System
+open System.Linq
 
 module Day05 =
 
@@ -34,16 +35,36 @@ module Day05 =
                   let p2' = List.append b p2
                   p1', p2'
 
-    let rec executeReactions (p1 : char list) (p2 : char list) =
-        match p2 with
-        | c1 :: c2 :: rest -> let r1, r2 = processPair c1 c2
-                              let p1', p2' = adjustAfterReaction p1 rest r1 r2
-                              executeReactions p1' p2'
-        | [c]              -> List.append p1 [c]
-        | _ -> p1
+
+    let executeReactions (polymer : string) =
+        let rec helper (p1 : char list) (p2 : char list) =
+            match p2 with
+            | c1 :: c2 :: rest -> let r1, r2 = processPair c1 c2
+                                  let p1', p2' = adjustAfterReaction p1 rest r1 r2
+                                  helper p1' p2'
+            | [c]              -> List.append p1 [c]
+            | _ -> p1
+
+        let p2 = polymer.ToCharArray() |> Array.toList
+        helper [] p2
 
     let day05 () =
-        let input = getInput InputFile
-        let p2 = input.ToCharArray() |> Array.toList
-        let result = executeReactions [] p2
+        let result = getInput InputFile |> executeReactions
         result.Length
+
+    let findShortest (polymer : string) =
+        let rec helper unitsToRemove (dic : Map<char, int>) =
+            match unitsToRemove with
+            | u :: rest -> let polymer' = polymer.Replace(string(u), "", true, Globalization.CultureInfo.InvariantCulture)
+                           let r = executeReactions polymer'
+                           let dic' = dic.Add(u , r.Length)
+                           helper rest dic'
+            | []        -> dic
+        
+        let unitsToRemove = ['a' .. 'z']
+        let d = helper unitsToRemove (Map([]))
+        d.OrderBy(fun kv -> kv.Value).First().Value
+
+    let day05Part2 () =
+        getInput InputFile
+        |> findShortest
