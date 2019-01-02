@@ -30,27 +30,6 @@ module Day06 =
     let parseInput lines =
         Array.map parseLine lines
 
-    // let isFreeToWest (coordCandidate : int * int) (coordToCheck : int * int) =
-    //     not (fst coordToCheck < fst coordCandidate && snd coordToCheck = snd coordCandidate)
-
-    // let isFreeToEast (coordCandidate : int * int) (coordToCheck : int * int) =
-    //     not (fst coordToCheck > fst coordCandidate && snd coordToCheck = snd coordCandidate)
-
-    // let isFreeToNorth (coordCandidate : int * int) (coordToCheck : int * int) =
-    //     not (fst coordToCheck = fst coordCandidate && snd coordToCheck < snd coordCandidate)
-
-    // let isFreeToSouth (coordCandidate : int * int) (coordToCheck : int * int) =
-    //     not (fst coordToCheck = fst coordCandidate && snd coordToCheck > snd coordCandidate)
-
-    // let isFreeInDirection checkFunc (coordCandidate : int * int) (coordsToCheck : List<int * int>) =
-    //     (List.map (checkFunc coordCandidate) coordsToCheck).All(fun b-> b = true)
-
-    // let isFreeInAnyDirection (coordsToCheck : List<int * int>) (coordCandidate : int * int) =
-    //     isFreeInDirection isFreeToWest coordCandidate coordsToCheck ||
-    //     isFreeInDirection isFreeToEast coordCandidate coordsToCheck ||
-    //     isFreeInDirection isFreeToNorth coordCandidate coordsToCheck ||
-    //     isFreeInDirection isFreeToSouth coordCandidate coordsToCheck
-
     let distance (a : Position) (b : Position) =
         let xDist = a.X - b.X |> abs
         let yDist = a.Y - b.Y |> abs
@@ -73,14 +52,21 @@ module Day06 =
         leftBound.Contains(id) ||
         rightBound.Contains(id)
 
-    let day06 () =
-        let input = System.IO.File.ReadAllLines InputFile
-        let parsedLines = Array.toList(parseInput input)
-        let coordinates = List.zip [1..parsedLines.Length] parsedLines
-                          |> List.map (fun (id, c) -> { Id = id; Pos = { X = fst c; Y = snd c }})
+    let getCoordinates () =
+        let parsedLines = System.IO.File.ReadAllLines InputFile
+                          |> parseInput
+                          |> Array.toList
+        List.zip [1..parsedLines.Length] parsedLines
+        |> List.map (fun (id, c) -> { Id = id; Pos = { X = fst c; Y = snd c }})
+
+    let constructField (coordinates : Coordinate list) =
         let xMax = coordinates.OrderByDescending(fun c -> c.Pos.X).First().Pos.X
         let yMax = coordinates.OrderByDescending(fun c -> c.Pos.Y).First().Pos.Y
-        let field = Array2D.init (xMax + 1) (yMax + 1) (fun _ _ -> 0)
+        Array2D.init (xMax + 1) (yMax + 1) (fun _ _ -> 0)
+
+    let day06 () =
+        let coordinates = getCoordinates()
+        let field = constructField coordinates
 
         let dic = Dictionary<int, int>()
         for x in [0 .. Array2D.length1 field - 1] do
@@ -97,3 +83,18 @@ module Day06 =
                          .Where(fun c -> not(isInfinite field c.Key))
                          .First()
         largest.Value
+
+    let totalDistance (pos : Position) (coordinatePositions : Position list) =
+        List.sumBy (distance pos) coordinatePositions
+
+    let day06Part2 () =
+        let coordinates = getCoordinates()
+        let field = constructField coordinates
+        let coordinatePositions = List.map (fun c -> c.Pos) coordinates
+        let mutable su = 0
+        for x in [0 .. Array2D.length1 field - 1] do
+            for y in [0 .. Array2D.length2 field - 1] do
+                let d = totalDistance { X = x; Y = y; } coordinatePositions
+                if d < 10000
+                then su <- su + 1
+        su
