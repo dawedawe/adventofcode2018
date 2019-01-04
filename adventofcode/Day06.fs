@@ -1,8 +1,6 @@
 namespace Adventofcode2018
 
-open System
 open System.Linq
-open System.Collections.Generic
 open System.Collections.Generic
 
 module Day06 =
