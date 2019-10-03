@@ -53,4 +53,27 @@ module Day08 =
         let numbers = lineOfNumbersToInts line
         let node = buildNode numbers
         sumMetaData node
+    
+    let sumMetaDataPart2 node =
+        let rec sumMetaDataPart2' (node : Node) (acc : int) : int =
+            match node with
+            | n when n.ChildCount = 0 -> let mutable acc' = acc + (Array.sum n.Metadata)
+                                         for c in node.ChildNodes do
+                                            acc' <- sumMetaDataPart2' c acc'
+                                         acc'
+            | n                       -> let mutable acc' = acc
+                                         for metadataValue in n.Metadata do
+                                            let indexedChild = Array.tryItem (metadataValue - 1) n.ChildNodes
+                                            match indexedChild with
+                                            | Some child -> acc' <- sumMetaDataPart2' child acc'
+                                            | None       -> ()
+                                         acc'
+    
+        sumMetaDataPart2' node 0
+
+    let day08Part2 () =
+        let line = System.IO.File.ReadAllText InputFile
+        let numbers = lineOfNumbersToInts line
+        let node = buildNode numbers
+        sumMetaDataPart2 node
         
