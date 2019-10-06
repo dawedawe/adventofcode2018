@@ -20,26 +20,42 @@ module Day11 =
         let level''' = level'' - 5
         level'''
 
-    let calcPowerOfSquare (topLeftX : int) (topLeftY : int) (grid : int [,]) =
+    let calcPowerOfSquare (topLeftX : int) (topLeftY : int) (grid : int [,]) squareSize =
+        let maxIndex = squareSize - 1
         let mutable sum = 0
-        for x in [0 .. 2] do
-            for y in [0 .. 2] do
+        for x in [0 .. maxIndex] do
+            for y in [0 .. maxIndex] do
                 sum <- sum + grid.[topLeftX + x, topLeftY + y]
         sum
+
+    let findBestSquare grid squareSize =
+        let maxIndex = Array2D.length1 grid - squareSize
+        let squareValues = System.Collections.Generic.Dictionary<int * int, int>()
+        for x in [0 .. maxIndex] do
+            for y in [0 .. maxIndex] do
+                let squareValue = calcPowerOfSquare x y grid squareSize
+                squareValues.Add((x, y), squareValue)
+        let orderedValues = squareValues.OrderByDescending(fun x -> x.Value)
+        let keyValue = orderedValues.First()
+        let x = fst keyValue.Key + 1
+        let y = snd keyValue.Key + 1
+        let value = keyValue.Value
+        (x, y), value
 
     let day11 () =
         let myCalcPower = calcPower serial
         let grid = Array2D.create 300 300 0
                    |> Array2D.mapi (fun x y _ -> myCalcPower { X = x + 1; Y = y + 1})
-        
-        let squareValues = System.Collections.Generic.Dictionary<int * int, int>()
-        for x in [0 .. 297] do
-            for y in [0 .. 297] do
-                let squareValue = calcPowerOfSquare x y grid
-                squareValues.Add((x, y), squareValue)
+        let (x, y), v = findBestSquare grid 3
+        x, y, v
 
-        let orderedValues = squareValues.OrderByDescending(fun x -> x.Value)
-        let keyValue = orderedValues.First()
-        let x = fst keyValue.Key + 1
-        let y = snd keyValue.Key + 1
-        (x, y)
+    let day11Part2 () =
+        let myCalcPower = calcPower serial
+        let grid = Array2D.create 300 300 0
+                   |> Array2D.mapi (fun x y _ -> myCalcPower { X = x + 1; Y = y + 1})
+        let sizeValues = System.Collections.Generic.Dictionary<int, (int * int) * int>()
+        for squareSize in [1..300] do
+            let best = findBestSquare grid squareSize
+            sizeValues.Add(squareSize, best)
+        let orderedSizeValues = sizeValues.OrderByDescending (fun x -> snd x.Value)
+        orderedSizeValues.First()
