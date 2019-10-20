@@ -61,7 +61,8 @@ module Day13 =
                     field.[x, y] <- if direction = Direction.Up || direction = Direction.Down then '|' else '-'
                 else
                     field.[x, y] <- symbol
-        (field, carts)
+        let orderedCarts = carts |> Array.sortBy (fun c -> c.Position.Y)
+        (field, orderedCarts)
 
     let calcJunctionDirecion cart =
         match (cart.Direction, cart.NextTurn) with
@@ -109,12 +110,31 @@ module Day13 =
         if (clashes.Length > 0)
         then Some (fst clashes.[0])
         else None
+
+    let detectCrashes carts =
+        let groups = Array.groupBy (fun c -> c.Position) carts
+        let clashes = Array.filter (fun (k, g : Cart []) -> g.Length > 1) groups
+        if (clashes.Length > 0)
+        then Array.map fst clashes
+        else Array.empty
         
     let tick field (carts : Cart []) =
         for i in [0 .. carts.Length - 1] do
             let movedCart = moveCart field carts.[i]
             carts.[i] <- movedCart
         ()
+
+    let tickPart2 field (carts : Cart []) =
+        for i in [0 .. carts.Length - 1] do
+            let movedCart = if carts.[i].Position.X <> -1 then moveCart field carts.[i] else carts.[i]
+            let crashVictim = Array.tryFindIndex (fun c -> c.Position = movedCart.Position) carts
+            if Option.isSome crashVictim
+            then
+                carts.[crashVictim.Value] <- { carts.[crashVictim.Value] with Position = {X = -1; Y = -1;} }
+                carts.[i] <- { carts.[i] with Position = {X = -1; Y = -1} }
+            else
+                carts.[i] <- movedCart
+        Array.filter (fun c -> c.Position.X <> -1) carts
 
     let rec tickTillFirstCrash field carts =
         tick field carts
@@ -123,7 +143,21 @@ module Day13 =
         then crashPos.Value
         else tickTillFirstCrash field carts
 
+    let rec tickTillOneCartLeft field carts =
+        if (Array.length carts > 1)
+        then
+            let orderedCarts = Array.sortBy (fun c -> c.Position.Y) carts
+            let orderedCarts' = tickPart2 field orderedCarts
+            tickTillOneCartLeft field orderedCarts'
+        else
+            carts.[0]
+
     let day13 () =
         let (field, carts) = parseInput InputFile
         let firstCrash = tickTillFirstCrash field carts
         firstCrash
+
+    let day13Part2 () =
+        let (field, carts) = parseInput InputFile
+        let lastCartStanding = tickTillOneCartLeft field carts
+        lastCartStanding
