@@ -23,6 +23,7 @@ module Day15 =
         Pos : Position
         HitPoints : int
         Species : Species
+        AttackPower : int
     }
 
     type CaveState = {
@@ -34,20 +35,21 @@ module Day15 =
         | Goblin -> 'G'
         | Elve   -> 'E'
 
-    let constructUnit species pos =
-        { Pos = pos; HitPoints = InitialHitPoints; Species = species }
+    let constructUnit species attackPower pos =
+        { Pos = pos; HitPoints = InitialHitPoints; Species = species; AttackPower = attackPower }
 
-    let getInitialCave path =
+    let getInitialCave path elveAttackPower =
         let lines = System.IO.File.ReadAllLines path
         let cave = Array.create lines.Length Array.empty
         let mutable units = Array.empty
         for i in [0 .. lines.Length - 1] do
             for j in [0 .. lines.[i].Length - 1] do
-                let species = if lines.[i].[j] = 'E' then Some Elve
-                              else if lines.[i].[j] = 'G' then Some Goblin
-                              else None
-                if Option.isSome species
-                then let newUnit = constructUnit species.Value {Y = i; X = j}
+                let speciesAndAttackPower = if lines.[i].[j] = 'E' then Some (Elve, elveAttackPower)
+                                            else if lines.[i].[j] = 'G' then Some (Goblin, AttackPower)
+                                            else None
+                if Option.isSome speciesAndAttackPower
+                then let (species, attackPower) = speciesAndAttackPower.Value
+                     let newUnit = constructUnit species attackPower {Y = i; X = j}
                      units <- Array.append units [|newUnit|]
             let a = lines.[i].ToCharArray()
             cave.[i] <- a
@@ -92,7 +94,7 @@ module Day15 =
         openSpaces
 
     let findMovementTargets cave unit =
-        let targets = cave.Units |> Array.filter (fun u -> u.Species <> unit.Species)
+        let targets = cave.Units |> Array.filter (fun u -> u.Species <> unit.Species && u.HitPoints > 0)
         let spaces = Array.map (fun t -> getOpenAdjecentSpaces cave.Field t.Pos) targets
         Array.concat spaces
 
@@ -176,7 +178,7 @@ module Day15 =
         let targetSpeciesSymbol = if unit.Species = Elve then 'G' else 'E'
         let candidates = getLegalAdjecentPositions cave.Field unit.Pos
         let targetPositions = Array.filter (fun p -> cave.Field.[p.Y].[p.X] = targetSpeciesSymbol) candidates
-        let targetUnits = Array.filter (fun u -> Array.contains u.Pos targetPositions) cave.Units
+        let targetUnits = Array.filter (fun u -> Array.contains u.Pos targetPositions && u.HitPoints > 0) cave.Units
                           |> Array.sortBy (fun u -> u.HitPoints)
         if (Array.isEmpty targetUnits)
         then None
@@ -186,19 +188,16 @@ module Day15 =
             let readingOrdered = Array.sortWith (fun u1 u2 -> posCompare u1.Pos u2.Pos) withMinHitPoints
             readingOrdered.[0] |> Some
 
-    let attack cave target =
-        let attackedTarget = { target with HitPoints = target.HitPoints - AttackPower }
-        let idx = Array.findIndex (fun u -> u.Pos = target.Pos) cave.Units
+    let attack cave target attackPower =
+        let attackedTarget = { target with HitPoints = target.HitPoints - attackPower }
+        let idx = Array.findIndex (fun u -> u = target) cave.Units
         cave.Units.[idx] <- attackedTarget
         if attackedTarget.HitPoints <= 0
         then
-            printfn "Unit Y=%d X=%d killed" target.Pos.Y target.Pos.X
+            printfn "%A Y=%d X=%d killed" target.Species target.Pos.Y target.Pos.X
             cave.Field.[target.Pos.Y].[target.Pos.X] <- '.'
-            let units' = Array.filter (fun u -> u.HitPoints > 0) cave.Units
-            cave.Units <- units'
 
     let moveUnit cave unit newPos =
-        printfn "Y %d X %d -> Y %d X %d" unit.Pos.Y unit.Pos.X newPos.Y newPos.X
         let movedUnit = { unit with Pos = newPos }
         let idx = Array.findIndex (fun u -> u = unit) cave.Units
         cave.Units.[idx] <- movedUnit
@@ -209,20 +208,17 @@ module Day15 =
     let doTurn cave unit =
         let targetNearby = getWeakestTargetNearby cave unit
         if Option.isSome targetNearby then
-            printfn "%A %d %d attacking %d %d" unit.Species unit.Pos.Y unit.Pos.X targetNearby.Value.Pos.Y targetNearby.Value.Pos.X
-            attack cave targetNearby.Value
+            attack cave targetNearby.Value unit.AttackPower
         else
             let openAdjacentSpaces = findMovementTargets cave unit
             let way = selectShortestWay cave.Field unit.Pos openAdjacentSpaces
-            if Option.isNone way
-            then printfn "no where to go"
-            else
+            if Option.isSome way
+            then
                  let newPos = way.Value.[0]
                  let movedUnit = moveUnit cave unit newPos
                  let targetNearby' = getWeakestTargetNearby cave movedUnit
                  if Option.isSome targetNearby' then
-                    printfn "attacking after move"
-                    attack cave targetNearby'.Value
+                    attack cave targetNearby'.Value unit.AttackPower
         ()
 
     let areTargetsLeft cave =
@@ -232,13 +228,15 @@ module Day15 =
 
     let calcRound cave =
         let mutable fullRoundPlayed = true
-        for u in cave.Units do
+        for i in [0 .. cave.Units.Length - 1] do
+            let u = cave.Units.[i]
             if u.HitPoints > 0
             then
                 if areTargetsLeft cave
                 then doTurn cave u
                 else fullRoundPlayed <- false
-        cave.Units <- Array.sortWith (fun u1 u2 -> posCompare u1.Pos u2.Pos) cave.Units
+        let readingOrderUnits = Array.sortBy (fun u -> (u.Pos.Y, u.Pos.X)) cave.Units
+        cave.Units <- readingOrderUnits
         fullRoundPlayed
 
     let displayField cave =
@@ -246,7 +244,7 @@ module Day15 =
             let s = Array.fold (fun sta c -> sta + string c) "" line
             printfn "%s" s
         for u in cave.Units do
-            printfn "%A Y %d X %d: %d" u.Species u.Pos.Y u.Pos.X u.HitPoints
+            printfn "%A Y %d X %d: %d A: %d" u.Species u.Pos.Y u.Pos.X u.HitPoints u.AttackPower
 
     let play cave =
         let mutable r = 0
@@ -254,16 +252,33 @@ module Day15 =
             if calcRound cave
             then
                 r <- r + 1
-            printfn "After %d rounds started" r
-            displayField cave
         let sumOfHitPoints = cave.Units
                              |> Array.filter (fun u -> u.HitPoints > 0)
                              |> Array.sumBy (fun u -> u.HitPoints)
         sumOfHitPoints, r
 
     let day15 () =
-        let cave = getInitialCave InputFile
+        let cave = getInitialCave InputFile 3
         let s, r = play cave
         let o = s * r
+        printfn "%d * %d = %d" s r (s * r)
+        o
+
+    let rec findMinElveAttackPower elveAttackPower =
+        let cave = getInitialCave InputFile elveAttackPower
+        let elvesToSurvive = Array.filter (fun u -> u.Species = Elve) cave.Units
+                             |> Array.length
+        let (s, r) = play cave
+        let survivingElves = Array.filter (fun u -> u.Species = Elve && u.HitPoints > 0) cave.Units
+                             |> Array.length
+        if (survivingElves = elvesToSurvive)
+        then
+            (s, r, elveAttackPower)
+        else findMinElveAttackPower (elveAttackPower + 1)
+        
+    let day15Part2 () =
+        let s, r, a = findMinElveAttackPower 4
+        let o = s * r
+        printfn "elve attackpower %d" a
         printfn "%d * %d = %d" s r (s * r)
         o
