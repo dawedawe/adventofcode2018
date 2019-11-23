@@ -139,10 +139,30 @@ module Day16 =
         regAfter.[inst.OutReg] <- if (regs.[inst.InputA] = regs.[inst.InputB]) then 1 else 0
         regAfter
 
-    let opcodes =
-        [|
+    let allOpcodes =
+        [
             addr; addi; mulr; muli; banr; bani; borr; bori;
             setr; seti; gtir; gtri; gtrr; eqir; eqri; eqrr
+        ]
+
+    let allOpcodesNamed : (string * (Instruction -> RegisterState -> int []) * int Option) [] =
+        [|
+            ("addr", addr, None);
+            ("addi", addi, None);
+            ("mulr", mulr, None);
+            ("muli", muli, None);
+            ("banr", banr, None);
+            ("bani", bani, None);
+            ("borr", borr, None);
+            ("bori", bori, None);
+            ("setr", setr, None);
+            ("seti", seti, None);
+            ("gtir", gtir, None);
+            ("gtri", gtri, None);
+            ("gtrr", gtrr, None);
+            ("eqir", eqir, None);
+            ("eqri", eqri, None);
+            ("eqrr", eqrr, None)
         |]
 
     let testOpcode opcode (sample : Sample) =
@@ -150,10 +170,62 @@ module Day16 =
         result = sample.After
 
     let behaveLike3OrMore sample =
-        Array.map (fun o -> testOpcode o sample) opcodes
-        |> Array.sumBy (fun t -> if t then 1 else 0) >= 3
+        List.map (fun o -> testOpcode o sample) allOpcodes
+        |> List.sumBy (fun t -> if t then 1 else 0) >= 3
+
+    let getMatchingOpcodes (namedOpcodes : (string * (Instruction -> RegisterState -> int []) * int Option) []) sample =
+        let r = Array.filter (fun (_, o, _) -> testOpcode o sample) namedOpcodes
+        r
 
     let day16 () =
         let samples = getSamples InputFile
         List.map behaveLike3OrMore samples
         |> List.sumBy (fun t -> if t then 1 else 0)
+
+
+    let rec mapOpcodesToNumber opcodesNamedNumbered samples =
+        if (Option.isNone (Array.tryFind (fun (_, _, n) -> Option.isNone n) opcodesNamedNumbered))
+        then opcodesNamedNumbered
+        else
+             let opcodesToTry = Array.filter (fun (_, _, n) -> Option.isNone n) opcodesNamedNumbered
+             let r = List.map (fun s -> (s.Inst.Number, getMatchingOpcodes opcodesToTry s)) samples
+             let m = List.filter (fun (_, matches) -> Array.length matches = 1) r
+                     |> Map.ofList
+             if Map.isEmpty m
+             then
+                 printfn "no unambiguous found"
+                 opcodesNamedNumbered
+             else
+                 for e in m do
+                    let (name, op, _) = e.Value.[0]
+                    let index = Array.findIndex (fun (x1, _, _) -> x1 = name) opcodesNamedNumbered
+                    opcodesNamedNumbered.[index] <- (name, op, Some e.Key)
+                 mapOpcodesToNumber opcodesNamedNumbered samples
+
+    let getTestProgram path =
+        let mutable instructions = List.empty
+        let input = System.IO.File.ReadAllLines path
+        let lastAfter = Array.FindLastIndex(input, (fun l -> l.StartsWith("After:")))
+        let indexToStart = lastAfter + 4
+        for i in [indexToStart .. input.Length - 1] do
+            let instruction = parseInstruction input.[i]
+            instructions <- instructions @ List.singleton instruction
+        instructions            
+
+    let computeProgram (instructions : Instruction list) (opcodeMap : (int * (Instruction -> RegisterState -> int []) * string) []) =
+        let mutable state = [| 0; 0; 0; 0; |]
+        for i in instructions do
+            let opToLookUp = i.Number
+            let (opNumber, op, opName) = opcodeMap.[opToLookUp]
+            let r = op i state
+            state <- r
+        state
+
+    let day16Part2 () =
+        let samples = getSamples InputFile
+        let m = mapOpcodesToNumber allOpcodesNamed samples
+                |> Array.map (fun (name, op, number : int Option) -> (number.Value, op, name))
+                |> Array.sortBy (fun (n, _, _) -> n)
+        let testProgram = getTestProgram InputFile
+        let r = computeProgram testProgram m
+        r
