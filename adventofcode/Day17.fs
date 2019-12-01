@@ -189,12 +189,16 @@ module Day17 =
                 printfn "no move possible"
                 ()
 
-    let countWater minY maxY (field : char [][]) =
+    let countWater minY maxY f (field : char [][]) =
         let mutable sum = 0
         for i in minY .. maxY do
-            let w = Array.sumBy (fun c -> if c = '~' || c = '|' then 1 else 0) field.[i]
+            let w = Array.sumBy (fun c -> if f c then 1 else 0) field.[i]
             sum <- sum + w
         sum
+
+    let countAsWater = fun c -> c = '~' || c = '|'
+
+    let countAsWaterPart2 = fun c -> c = '~'
 
     let day17 () =
         let scan = getScan InputFile
@@ -202,6 +206,16 @@ module Day17 =
         moveWater field Source
         let minY = scan.Min(fun s -> fst s)
         let maxY = scan.Max(fun s -> fst s)
-        let waterCount = countWater minY maxY field
+        let waterCount = countWater minY maxY countAsWater field
+        //displayField field
+        waterCount
+
+    let day17Part2 () =
+        let scan = getScan InputFile
+        let field = constructField scan
+        moveWater field Source
+        let minY = scan.Min(fun s -> fst s)
+        let maxY = scan.Max(fun s -> fst s)
+        let waterCount = countWater minY maxY countAsWaterPart2 field
         //displayField field
         waterCount
