@@ -70,8 +70,53 @@ module Day18 =
                 else if c = Trees then treesCount <- treesCount + 1
         lumberYardsCount * treesCount
 
+    let equalAreas (area1 : Area) (area2 : Area) =
+        let mutable equal = true
+        let mutable line = 0
+        while equal && line < area1.Length do
+            equal <- area1.[line] = area2.[line]
+            line <- line + 1
+        equal
+
     let day18 () =
         let mutable area = getArea InputFile
         for _ in 1 .. 10 do
             area <- calcAreaTransition area
+        calcResources area
+
+    let day18Part2 () =
+        let mutable area = getArea InputFile
+        let mutable i = 1
+        let mutable areasSet = Set.empty
+        let mutable setIsGrowing = true
+        let mutable areasMap = Map.empty
+        while setIsGrowing && i <= 1000000000 do
+            let area' = calcAreaTransition area
+            let setSize = Set.count areasSet
+            areasSet <- Set.add area' areasSet
+            areasMap <- Map.add i area' areasMap
+            let setSize' = Set.count areasSet
+            setIsGrowing <- setSize < setSize'
+            i <- i + 1
+            area <- area'
+        let lastKey = i - 1
+        let lastArea = areasMap.Item lastKey
+        let firstCopyKey = Map.tryFindKey (fun k v -> v = lastArea) areasMap |> Option.get
+        let lastInLoopKey = lastKey - 1
+        let beforeLoop = firstCopyKey - 1
+        let loopSize = lastInLoopKey - beforeLoop
+        let keyInLoop = (1000000000 - beforeLoop) % loopSize
+        let keyInMap = keyInLoop + beforeLoop
+        calcResources (areasMap.Item keyInMap)
+
+    let day18Part2Old () =
+        let mutable area = getArea InputFile
+        let mutable i = 0
+        let mutable equal = false
+        while not equal && i < 1000000000 do
+            let area' = calcAreaTransition area
+            equal <- equalAreas area area'
+            area <- area'
+            printfn "%d" i
+            i <- i + 1
         calcResources area
