@@ -173,3 +173,9 @@ module Day20 =
         let map = parseSymbols s
         let map2 = bfs map
         map2.OrderBy(fun kv -> kv.Value).Last()
+
+    let day20Part2() =
+        let s = getInput InputFile
+        let map = parseSymbols s
+        let map2 = bfs map
+        map2.Where(fun kv -> kv.Value >= 1000).Count()
