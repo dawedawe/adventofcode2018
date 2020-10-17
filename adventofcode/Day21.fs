@@ -214,7 +214,7 @@ module Day21 =
     //           RegState = regsAfter
     //           InstPointer = instPointer }
 
-    let eqrr (inst: InstructionParams) (state: ProgramState) =
+    let eqrrPart1 (inst: InstructionParams) (state: ProgramState) =
         checkABForReg0 "eqrr" inst
         let regsAfter = Array.copy state.RegState
         regsAfter.[int state.InstPointerReg] <- state.InstPointer
@@ -229,6 +229,29 @@ module Day21 =
         { state with
               RegState = regsAfter
               InstPointer = instPointer }
+
+    let mutable cache = Set.empty<int64>
+
+    let eqrr (inst: InstructionParams) (state: ProgramState) =
+        // checkABForReg0 "eqrr" inst
+        let regsAfter = Array.copy state.RegState
+        regsAfter.[int state.InstPointerReg] <- state.InstPointer
+        if inst.InputB = 0L
+        then
+            if Set.contains regsAfter.[int inst.InputA] cache
+            then printfn "cycle with %d" regsAfter.[int inst.InputA]
+            else cache <- Set.add regsAfter.[int inst.InputA] cache
+
+            printfn "eqrr reg %d = reg %d" inst.InputA inst.InputB
+            printfn "%d = %d" regsAfter.[int inst.InputA] regsAfter.[int inst.InputB]
+            regsAfter.[int inst.OutReg] <- 1L
+        
+        regsAfter.[int inst.OutReg] <- if (regsAfter.[int inst.InputA] = regsAfter.[int inst.InputB]) then 1L else 0L
+        let instPointer = regsAfter.[int state.InstPointerReg] + 1L
+        { state with
+              RegState = regsAfter
+              InstPointer = instPointer }
+
 
     let opcodesMap =
         [| ("addr", addr)
@@ -306,7 +329,7 @@ module Day21 =
         for i in [0L .. 0L] do
             let p = copyProgram program
             p.State.RegState.[0] <- i
-            let instructions = runProgram 500000 p
+            let instructions = runProgram Int32.MaxValue p
             match instructions with
             | Some j when j < minInstructions -> minInstructions <- j
             | _ -> ()
